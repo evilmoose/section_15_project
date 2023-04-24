@@ -18,6 +18,10 @@
 //    ...
 //  ]
 
+const API_URL = "https://jservice.io/api/";
+const categoryColumns = 6;
+const squares = 5;
+
 let categories = [];
 
 
@@ -26,7 +30,12 @@ let categories = [];
  * Returns array of category ids
  */
 
-function getCategoryIds() {
+async function getCategoryIds() {
+    let res = await axios.get(`${API_URL}categories?count=100`);
+    let IDs = res.data.map(c => c.id);
+    
+    return _.sampleSize( IDs, categoryColumns );
+
 }
 
 /** Return object with data about a category:
@@ -41,7 +50,18 @@ function getCategoryIds() {
  *   ]
  */
 
-function getCategory(catId) {
+async function getCategory(catId) {
+    let res = await axios.get( `${ API_URL }category?id=${ catId }` );
+    let cat = res.data;
+    let sqrs = cat.clues;
+    let randomSqr = _.sampleSize(sqrs, squares );
+    let clues = randomSqr.map( c => ({
+    question: c.question,
+    answer: c.answer,
+    showing: null,
+  }));
+
+  return { title: cat.title, clues };
 }
 
 /** Fill the HTML table#jeopardy with the categories & cells for questions.
@@ -53,6 +73,25 @@ function getCategory(catId) {
  */
 
 async function fillTable() {
+    $( "#jeopardy thead" ).empty();
+
+    let $tr = $( "<tr>" );
+    for ( let id = 0; id < categoryColumns; id++ ) {
+        $tr.append( $( "<th>" ).text( categories[ id ].title ) );
+    }
+    
+    $( "#jeopardy thead" ).append( $tr );
+
+    $( "#jeopardy tbody" ).empty();
+    for ( let sqr = 0;  sqr < squares; sqr++ ) {
+        let $tr = $( "<tr>" );
+        
+        for ( let id = 0; id < categoryColumns; id++ ) {
+            $tr.append( $( "<td>" ).attr( "id", `${ id }-${ sqr }` ).text( "?" ) );
+        }
+        
+        $("#jeopardy tbody").append($tr);
+    }
 }
 
 /** Handle clicking on a clue: show the question or answer.
@@ -63,7 +102,26 @@ async function fillTable() {
  * - if currently "answer", ignore click
  * */
 
-function handleClick(evt) {
+function handleClick(event) {
+    let id                          = event.target.id;
+    let [ categoryID, squareID ]    = id.split( "-" );
+    let square                      = categories[ categoryID ].clues[ squareID ];
+
+    let message;
+
+    if ( !square.showing ) {
+        message = square.question;
+        square.showing = "question";
+    }
+    else if ( square.showing === "question" ) {
+        message = square.answer;
+        square.showing = "answer";
+    }
+    else {
+        return;
+    }
+
+    $( `#${ categoryID }-${squareID}` ).html( msg );
 }
 
 /** Wipe the current Jeopardy board, show the loading spinner,
@@ -87,12 +145,24 @@ function hideLoadingView() {
  * */
 
 async function setupAndStart() {
+    let categoryIDs = await getCategoryIds();
+
+    categories = [];
+
+    for ( let id of categoryIDs ) {
+        categories.push( await getCategory( id ) );
+    }
+
+    fillTable();
 }
 
 /** On click of start / restart button, set up game. */
 
-// TODO
+$( "#restart" ).on( "click", setupAndStart);
 
 /** On page load, add event handler for clicking clues */
 
-// TODO
+$( async () => {
+    setupAndStart();
+    $( "#jeopardy").on( "click", "td", handleClick );
+});
