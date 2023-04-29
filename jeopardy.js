@@ -87,7 +87,8 @@ async function fillTable() {
         let $tr = $( "<tr>" );
         
         for ( let id = 0; id < COLUMNS; id++ ) {
-            $tr.append( $( "<td>" ).attr( "id", `${ id }-${ sqr }` ).text( "?" ) );
+            $tr.append( $( "<td>" ).attr( "id", `${ id }-${ sqr }` ).text( getAmountToDisplay( sqr ) ) );
+            //console.log(getAmountToDisplay(sqr));
         }
         
         $("#jeopardy tbody").append($tr);
@@ -154,6 +155,28 @@ async function setupAndStart() {
     }
 
     fillTable();
+}
+
+function getAmountToDisplay(square) {
+    switch (square)
+    {
+        case 1:
+            return "400";
+            break;
+        case 2:
+            return "600";
+            break;
+        case 3:
+            return "800";
+            break;
+        case 4:
+            return "1000";
+            break;
+        default:
+            return "200";
+            break;
+    }
+
 }
 
 /** On click of start / restart button, set up game. */
